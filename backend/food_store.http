@@ -1,0 +1,505 @@
+@baseUrl = http://localhost:8000
+@api = {{baseUrl}}/api/v1
+
+# Prueba manual de la API con la extension REST Client de VS Code.
+# Antes: python -m app.db.seed y uvicorn app.main:app --reload
+# Correr en orden: REST Client guarda la cookie de cada login y la manda sola en las
+# peticiones siguientes. Los ids salen de las respuestas con # @name, y el usuario y la
+# categoria nuevos llevan un numero al azar, asi el archivo se puede correr mas de una vez.
+
+### 1. ✅ 200: Health
+GET {{baseUrl}}/health
+
+### ==========================================
+### AUTENTICACIÓN
+### ==========================================
+
+### 2. ✅ 201: Registro público: crea un usuario con rol user
+# @name registro
+POST {{api}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "maria{{$randomInt 1000 99999}}",
+  "full_name": "María Gómez",
+  "email": "maria{{$randomInt 1000 99999}}@example.com",
+  "password": "Maria1234!"
+}
+
+### 3. ❌ 409: El username ya existe
+POST {{api}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "{{registro.response.body.$.username}}",
+  "full_name": "Otra María",
+  "email": "otra{{$randomInt 1000 99999}}@example.com",
+  "password": "Maria1234!"
+}
+
+### 4. ❌ 409: El email ya existe
+POST {{api}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "otro{{$randomInt 1000 99999}}",
+  "full_name": "Otro usuario",
+  "email": "{{registro.response.body.$.email}}",
+  "password": "Maria1234!"
+}
+
+### 5. ❌ 422: Email con formato inválido
+POST {{api}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "sinmail",
+  "full_name": "Sin email",
+  "email": "no-es-un-email",
+  "password": "Valido1234!"
+}
+
+### 6. ❌ 422: Contraseña de menos de 8 caracteres
+POST {{api}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "corta",
+  "full_name": "Clave corta",
+  "email": "corta@example.com",
+  "password": "123"
+}
+
+### 7. ❌ 401: /me sin sesión
+GET {{api}}/auth/me
+
+### 8. ❌ 401: Contraseña incorrecta
+POST {{api}}/auth/token
+Content-Type: application/x-www-form-urlencoded
+
+username={{registro.response.body.$.username}}&password=incorrecta
+
+### 9. ✅ 200: Login de María: la cookie HttpOnly access_token viene en Set-Cookie, no en el cuerpo
+POST {{api}}/auth/token
+Content-Type: application/x-www-form-urlencoded
+
+username={{registro.response.body.$.username}}&password=Maria1234!
+
+### 10. ✅ 200: /me de María (role user, sin hashed_password)
+GET {{api}}/auth/me
+
+### ==========================================
+### CATÁLOGO (lecturas públicas)
+### ==========================================
+
+### 11. ✅ 200: Categorías activas
+# @name categorias
+GET {{api}}/categorias
+
+### 12. ✅ 200: Productos paginados: { total, items }
+# @name productos
+GET {{api}}/productos?skip=0&limit=5
+
+### 13. ✅ 200: Búsqueda por nombre, sin distinguir mayúsculas
+GET {{api}}/productos?search=PIZZA
+
+### 14. ✅ 200: Filtro por categoría y disponibilidad
+GET {{api}}/productos?categoria_id={{categorias.response.body.$[0].id}}&disponible=true
+
+### 15. ✅ 200: Detalle de un producto con su categoría
+GET {{api}}/productos/{{productos.response.body.$.items[0].id}}
+
+### 16. ❌ 404: Producto inexistente
+GET {{api}}/productos/99999
+
+### 17. ❌ 422: limit mayor a 100
+GET {{api}}/productos?limit=500
+
+### 18. ❌ 403: Un user no puede crear categorías
+POST {{api}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "Sin permiso"
+}
+
+### ==========================================
+### PEDIDOS DEL CLIENTE (RN-01, RN-04, RN-06)
+### ==========================================
+
+### 19. ✅ 201: Crear un pedido con dos productos: copia nombre y precio, descuenta stock, nace PENDIENTE
+# @name pedido1
+POST {{api}}/pedidos
+Content-Type: application/json
+
+{
+  "items": [
+    { "producto_id": {{productos.response.body.$.items[0].id}}, "cantidad": 2 },
+    { "producto_id": {{productos.response.body.$.items[1].id}}, "cantidad": 1 }
+  ],
+  "forma_pago": "EFECTIVO",
+  "direccion_entrega": "Av. Siempre Viva 742",
+  "notas": "Tocar timbre"
+}
+
+### 20. ✅ 200: El stock del primer producto bajó 2 unidades
+GET {{api}}/productos/{{productos.response.body.$.items[0].id}}
+
+### 21. ❌ 400: El mismo producto repetido en dos ítems
+POST {{api}}/pedidos
+Content-Type: application/json
+
+{
+  "items": [
+    { "producto_id": {{productos.response.body.$.items[0].id}}, "cantidad": 1 },
+    { "producto_id": {{productos.response.body.$.items[0].id}}, "cantidad": 1 }
+  ],
+  "forma_pago": "EFECTIVO",
+  "direccion_entrega": "Av. Siempre Viva 742"
+}
+
+### 22. ❌ 400: Stock insuficiente
+POST {{api}}/pedidos
+Content-Type: application/json
+
+{
+  "items": [
+    { "producto_id": {{productos.response.body.$.items[0].id}}, "cantidad": 9999 }
+  ],
+  "forma_pago": "TRANSFERENCIA",
+  "direccion_entrega": "Av. Siempre Viva 742"
+}
+
+### 23. ❌ 404: El segundo ítem no existe: no se guarda nada (tampoco el descuento del primero)
+POST {{api}}/pedidos
+Content-Type: application/json
+
+{
+  "items": [
+    { "producto_id": {{productos.response.body.$.items[0].id}}, "cantidad": 1 },
+    { "producto_id": 99999, "cantidad": 1 }
+  ],
+  "forma_pago": "EFECTIVO",
+  "direccion_entrega": "Av. Siempre Viva 742"
+}
+
+### 24. ✅ 200: El stock del primer producto sigue igual que en la petición 20
+GET {{api}}/productos/{{productos.response.body.$.items[0].id}}
+
+### 25. ❌ 422: Forma de pago que no es EFECTIVO ni TRANSFERENCIA
+POST {{api}}/pedidos
+Content-Type: application/json
+
+{
+  "items": [
+    { "producto_id": {{productos.response.body.$.items[0].id}}, "cantidad": 1 }
+  ],
+  "forma_pago": "TARJETA",
+  "direccion_entrega": "Av. Siempre Viva 742"
+}
+
+### 26. ❌ 422: Dirección de menos de 5 caracteres
+POST {{api}}/pedidos
+Content-Type: application/json
+
+{
+  "items": [
+    { "producto_id": {{productos.response.body.$.items[0].id}}, "cantidad": 1 }
+  ],
+  "forma_pago": "EFECTIVO",
+  "direccion_entrega": "Av"
+}
+
+### 27. ❌ 422: Pedido sin ítems
+POST {{api}}/pedidos
+Content-Type: application/json
+
+{
+  "items": [],
+  "forma_pago": "EFECTIVO",
+  "direccion_entrega": "Av. Siempre Viva 742"
+}
+
+### 28. ✅ 200: Mis pedidos (solo los propios)
+GET {{api}}/pedidos
+
+### 29. ✅ 200: Detalle de mi pedido con sus líneas
+GET {{api}}/pedidos/{{pedido1.response.body.$.id}}
+
+### 30. ❌ 403: El resumen es solo para admin
+GET {{api}}/pedidos/resumen
+
+### 31. ❌ 403: Cambiar el estado es solo para admin
+PATCH {{api}}/pedidos/{{pedido1.response.body.$.id}}/estado
+Content-Type: application/json
+
+{
+  "estado": "EN_PREPARACION"
+}
+
+### 32. ✅ 201: Otro pedido, para cancelarlo
+# @name pedido2
+POST {{api}}/pedidos
+Content-Type: application/json
+
+{
+  "items": [
+    { "producto_id": {{productos.response.body.$.items[2].id}}, "cantidad": 3 }
+  ],
+  "forma_pago": "TRANSFERENCIA",
+  "direccion_entrega": "Calle Falsa 123"
+}
+
+### 33. ✅ 200: Cancelar mi pedido PENDIENTE: el stock vuelve (RN-03)
+PATCH {{api}}/pedidos/{{pedido2.response.body.$.id}}/cancelar
+
+### 34. ✅ 200: El stock del tercer producto volvió al valor de la petición 12
+GET {{api}}/productos/{{productos.response.body.$.items[2].id}}
+
+### 35. ❌ 400: Ya está CANCELADO: no se puede cancelar otra vez
+PATCH {{api}}/pedidos/{{pedido2.response.body.$.id}}/cancelar
+
+### 36. ✅ 200: Login del cliente del seed
+POST {{api}}/auth/token
+Content-Type: application/x-www-form-urlencoded
+
+username=cliente&password=Cliente1234!
+
+### 37. ❌ 403: Otro cliente no puede ver el pedido de María
+GET {{api}}/pedidos/{{pedido1.response.body.$.id}}
+
+### 38. ❌ 403: Ni cancelarlo
+PATCH {{api}}/pedidos/{{pedido1.response.body.$.id}}/cancelar
+
+### 39. ❌ 404: Pedido inexistente
+GET {{api}}/pedidos/99999
+
+### ==========================================
+### ADMIN: MÁQUINA DE ESTADOS Y RESUMEN (RN-02)
+### ==========================================
+
+### 40. ✅ 200: Login del admin
+POST {{api}}/auth/token
+Content-Type: application/x-www-form-urlencoded
+
+username=admin&password=Admin1234!
+
+### 41. ✅ 200: /me del admin
+# @name adminMe
+GET {{api}}/auth/me
+
+### 42. ✅ 200: El admin ve los pedidos de todos, con filtro por estado
+GET {{api}}/pedidos?estado=PENDIENTE
+
+### 43. ✅ 200: El admin ve el pedido de María
+GET {{api}}/pedidos/{{pedido1.response.body.$.id}}
+
+### 44. ✅ 200: PENDIENTE → EN_PREPARACION
+PATCH {{api}}/pedidos/{{pedido1.response.body.$.id}}/estado
+Content-Type: application/json
+
+{
+  "estado": "EN_PREPARACION"
+}
+
+### 45. ❌ 400: EN_PREPARACION → PENDIENTE no es una transición válida
+PATCH {{api}}/pedidos/{{pedido1.response.body.$.id}}/estado
+Content-Type: application/json
+
+{
+  "estado": "PENDIENTE"
+}
+
+### 46. ✅ 200: EN_PREPARACION → ENTREGADO
+PATCH {{api}}/pedidos/{{pedido1.response.body.$.id}}/estado
+Content-Type: application/json
+
+{
+  "estado": "ENTREGADO"
+}
+
+### 47. ❌ 400: ENTREGADO es terminal: no se puede cancelar
+PATCH {{api}}/pedidos/{{pedido1.response.body.$.id}}/estado
+Content-Type: application/json
+
+{
+  "estado": "CANCELADO"
+}
+
+### 48. ❌ 422: Un estado que no existe
+PATCH {{api}}/pedidos/{{pedido1.response.body.$.id}}/estado
+Content-Type: application/json
+
+{
+  "estado": "EN_CAMINO"
+}
+
+### 49. ✅ 200: Resumen del panel
+GET {{api}}/pedidos/resumen
+
+### ==========================================
+### ADMIN: CATÁLOGO
+### ==========================================
+
+### 50. ✅ 201: Crear una categoría
+# @name categoria
+POST {{api}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "Ensaladas {{$randomInt 1000 99999}}",
+  "descripcion": "Ensaladas frescas"
+}
+
+### 51. ❌ 409: Nombre duplicado (sin distinguir mayúsculas)
+POST {{api}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "pizzas"
+}
+
+### 52. ❌ 422: Nombre de un solo carácter
+POST {{api}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "P"
+}
+
+### 53. ✅ 200: PUT parcial: solo cambia la descripción
+PUT {{api}}/categorias/{{categoria.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "descripcion": "Ensaladas de estación"
+}
+
+### 54. ✅ 201: Crear un producto en esa categoría
+# @name producto
+POST {{api}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Ensalada César",
+  "descripcion": "Lechuga, pollo, croutons y parmesano",
+  "precio_base": 7800,
+  "imagen_url": "https://placehold.co/600x400/0d9488/ffffff?text=Ensalada+Cesar",
+  "stock": 10,
+  "categoria_id": {{categoria.response.body.$.id}}
+}
+
+### 55. ❌ 404: Crear un producto con una categoría inexistente
+POST {{api}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Sin categoría",
+  "precio_base": 100,
+  "categoria_id": 99999
+}
+
+### 56. ❌ 422: Precio negativo
+POST {{api}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Precio negativo",
+  "precio_base": -1,
+  "categoria_id": {{categoria.response.body.$.id}}
+}
+
+### 57. ✅ 200: PATCH de stock y disponibilidad
+PATCH {{api}}/productos/{{producto.response.body.$.id}}/stock
+Content-Type: application/json
+
+{
+  "stock": 25,
+  "disponible": false
+}
+
+### 58. ✅ 200: PUT parcial: solo cambia el precio
+PUT {{api}}/productos/{{producto.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "precio_base": 8200
+}
+
+### 59. ❌ 400: El producto no está disponible: no se puede pedir
+POST {{api}}/pedidos
+Content-Type: application/json
+
+{
+  "items": [
+    { "producto_id": {{producto.response.body.$.id}}, "cantidad": 1 }
+  ],
+  "forma_pago": "EFECTIVO",
+  "direccion_entrega": "Av. Siempre Viva 742"
+}
+
+### 60. ✅ 204: Baja lógica del producto
+DELETE {{api}}/productos/{{producto.response.body.$.id}}
+
+### 61. ❌ 404: Un producto dado de baja se trata como inexistente
+GET {{api}}/productos/{{producto.response.body.$.id}}
+
+### 62. ❌ 404: Un producto dado de baja no se puede pedir
+POST {{api}}/pedidos
+Content-Type: application/json
+
+{
+  "items": [
+    { "producto_id": {{producto.response.body.$.id}}, "cantidad": 1 }
+  ],
+  "forma_pago": "EFECTIVO",
+  "direccion_entrega": "Av. Siempre Viva 742"
+}
+
+### 63. ✅ 204: Baja lógica de la categoría
+DELETE {{api}}/categorias/{{categoria.response.body.$.id}}
+
+### 64. ❌ 404: Una categoría dada de baja se trata como inexistente
+GET {{api}}/categorias/{{categoria.response.body.$.id}}
+
+### 65. ❌ 409: La baja lógica no libera el nombre
+POST {{api}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "{{categoria.response.body.$.nombre}}"
+}
+
+### ==========================================
+### ADMIN: USUARIOS
+### ==========================================
+
+### 66. ✅ 200: Listado de usuarios
+GET {{api}}/admin/usuarios
+
+### 67. ✅ 200: Desactivar a María
+POST {{api}}/admin/usuarios/{{registro.response.body.$.id}}/desactivar
+
+### 68. ✅ 200: Desactivar otra vez: es idempotente
+POST {{api}}/admin/usuarios/{{registro.response.body.$.id}}/desactivar
+
+### 69. ❌ 400: El admin no puede desactivarse a sí mismo
+POST {{api}}/admin/usuarios/{{adminMe.response.body.$.id}}/desactivar
+
+### 70. ❌ 404: Usuario inexistente
+POST {{api}}/admin/usuarios/99999/activar
+
+### 71. ❌ 400: María desactivada no puede iniciar sesión
+POST {{api}}/auth/token
+Content-Type: application/x-www-form-urlencoded
+
+username={{registro.response.body.$.username}}&password=Maria1234!
+
+### 72. ✅ 200: Activar a María
+POST {{api}}/admin/usuarios/{{registro.response.body.$.id}}/activar
+
+### 73. ✅ 200: Cerrar sesión: Set-Cookie borra access_token
+POST {{api}}/auth/logout
+
+### 74. ❌ 401: Sin sesión, /me responde 401
+GET {{api}}/auth/me

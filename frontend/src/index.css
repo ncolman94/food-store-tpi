@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* Colores de la app: cada uno tiene un uso fijo */
+@theme {
+  --color-brand: #ea580c;
+  --color-brand-hover: #c2410c;
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+}
+
+@layer base {
+  body {
+    @apply bg-stone-50 text-gray-900 antialiased;
+  }
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm
+      focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none
+      aria-[invalid=true]:border-error disabled:bg-gray-100;
+  }
+}

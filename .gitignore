@@ -1,0 +1,19 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.db
+
+# Node
+node_modules/
+dist/
+
+# Variables de entorno: solo se suben los .env.example
+.env
+.env.local
+
+# Editor y sistema
+.vscode/
+.idea/
+.DS_Store
