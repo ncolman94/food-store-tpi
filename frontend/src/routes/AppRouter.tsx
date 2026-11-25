@@ -10,8 +10,8 @@ import {
 } from "@/features/pedidos";
 import { AdminProductosPage, CatalogoPage } from "@/features/productos";
 import { AdminUsuariosPage } from "@/features/usuarios";
+import { ProtectedRoute } from "@/shared/components/ProtectedRoute";
 import { MainLayout } from "@/shared/layout/MainLayout";
-import { ProtectedRoute } from "./ProtectedRoute";
 
 export function AppRouter() {
   return (

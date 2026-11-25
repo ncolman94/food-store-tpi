@@ -196,7 +196,7 @@ frontend/src/
 ├── shared/                      # Transversal, sin lógica de negocio
 │   ├── api/                     # axiosInstance (withCredentials + interceptor), handleApiError, queryClient
 │   ├── ui/                      # Button, Card, Input, Modal y BadgeEstado
-│   ├── components/              # Paginacion, Skeleton, EstadoVacio, EstadoError, DataTable y Toast
+│   ├── components/              # Paginacion, Skeleton, EstadoVacio, EstadoError, DataTable, Toast y ProtectedRoute
 │   ├── layout/                  # Navbar y MainLayout
 │   └── utils/formato.ts         # Precios en pesos y fechas en hora local
 ├── features/                    # Un dominio por carpeta: pages, components, hooks, api y types
@@ -207,7 +207,7 @@ frontend/src/
 │   └── pedidos/                 # CarritoPage, CheckoutPage, MisPedidosPage, AdminPedidosPage, AdminResumenPage,
 │                                # usePedidos, useCrearPedido, useCambiarEstadoPedido, useCancelarPedido, useResumenPedidos
 ├── store/                       # authStore, cartStore y notificationStore (Zustand)
-├── routes/                      # AppRouter (BrowserRouter) y ProtectedRoute
+├── routes/                      # AppRouter: BrowserRouter y la tabla de rutas
 ├── App.tsx                      # checkSession al montar, AppRouter y Toast
 └── main.tsx                     # QueryClientProvider
 ```
@@ -223,7 +223,7 @@ Cada feature expone lo que usan las demás en su `index.ts` (por ejemplo, `@/fea
 ### Sesión y rutas protegidas
 
 - **Axios** (`shared/api/axiosInstance.ts`): `baseURL = VITE_API_URL` y `withCredentials: true`, así el navegador guarda la cookie del login y la manda en cada petición. Su interceptor de respuesta limpia el `authStore` ante un 401 (salvo en `/auth/token`, donde significa credenciales incorrectas, y en `/auth/me`) o ante un 400 «Cuenta de usuario desactivada», y avisa con un toast.
-- **`ProtectedRoute`**: mientras `checkSession` confirma la sesión muestra «Verificando la sesión...» (así una recarga no manda al login), sin usuario redirige a `/login` y sin el rol a `/unauthorized`. El login vuelve a la pantalla que se había pedido.
+- **`ProtectedRoute`** (`shared/components/`): mientras `checkSession` confirma la sesión muestra «Verificando la sesión...» (así una recarga no manda al login), sin usuario redirige a `/login` y sin el rol a `/unauthorized`. El login vuelve a la pantalla que se había pedido.
 - **Logout**: `POST /auth/logout`, que borra la cookie, limpia el `authStore` y la caché de TanStack Query y redirige a `/login`.
 - Ocultar un botón no protege nada: la protección real está en el backend, que responde 401 y 403 en cada endpoint.
 
