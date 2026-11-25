@@ -399,7 +399,16 @@ Content-Type: application/json
   "categoria_id": 99999
 }
 
-### 56. ❌ 422: Precio negativo
+### 56. ❌ 422: Un producto sin categoria_id no se puede crear
+POST {{api}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Sin categoría",
+  "precio_base": 100
+}
+
+### 57. ❌ 422: Precio negativo
 POST {{api}}/productos
 Content-Type: application/json
 
@@ -409,7 +418,7 @@ Content-Type: application/json
   "categoria_id": {{categoria.response.body.$.id}}
 }
 
-### 57. ✅ 200: PATCH de stock y disponibilidad
+### 58. ✅ 200: PATCH de stock y disponibilidad
 PATCH {{api}}/productos/{{producto.response.body.$.id}}/stock
 Content-Type: application/json
 
@@ -418,7 +427,7 @@ Content-Type: application/json
   "disponible": false
 }
 
-### 58. ✅ 200: PUT parcial: solo cambia el precio
+### 59. ✅ 200: PUT parcial: solo cambia el precio
 PUT {{api}}/productos/{{producto.response.body.$.id}}
 Content-Type: application/json
 
@@ -426,7 +435,7 @@ Content-Type: application/json
   "precio_base": 8200
 }
 
-### 59. ❌ 400: El producto no está disponible: no se puede pedir
+### 60. ❌ 400: El producto no está disponible: no se puede pedir
 POST {{api}}/pedidos
 Content-Type: application/json
 
@@ -438,13 +447,13 @@ Content-Type: application/json
   "direccion_entrega": "Av. Siempre Viva 742"
 }
 
-### 60. ✅ 204: Baja lógica del producto
+### 61. ✅ 204: Baja lógica del producto
 DELETE {{api}}/productos/{{producto.response.body.$.id}}
 
-### 61. ❌ 404: Un producto dado de baja se trata como inexistente
+### 62. ❌ 404: Un producto dado de baja se trata como inexistente
 GET {{api}}/productos/{{producto.response.body.$.id}}
 
-### 62. ❌ 404: Un producto dado de baja no se puede pedir
+### 63. ❌ 404: Un producto dado de baja no se puede pedir
 POST {{api}}/pedidos
 Content-Type: application/json
 
@@ -456,13 +465,13 @@ Content-Type: application/json
   "direccion_entrega": "Av. Siempre Viva 742"
 }
 
-### 63. ✅ 204: Baja lógica de la categoría
+### 64. ✅ 204: Baja lógica de la categoría
 DELETE {{api}}/categorias/{{categoria.response.body.$.id}}
 
-### 64. ❌ 404: Una categoría dada de baja se trata como inexistente
+### 65. ❌ 404: Una categoría dada de baja se trata como inexistente
 GET {{api}}/categorias/{{categoria.response.body.$.id}}
 
-### 65. ❌ 409: La baja lógica no libera el nombre
+### 66. ❌ 409: La baja lógica no libera el nombre
 POST {{api}}/categorias
 Content-Type: application/json
 
@@ -474,32 +483,32 @@ Content-Type: application/json
 ### ADMIN: USUARIOS
 ### ==========================================
 
-### 66. ✅ 200: Listado de usuarios
+### 67. ✅ 200: Listado de usuarios
 GET {{api}}/admin/usuarios
 
-### 67. ✅ 200: Desactivar a María
+### 68. ✅ 200: Desactivar a María
 POST {{api}}/admin/usuarios/{{registro.response.body.$.id}}/desactivar
 
-### 68. ✅ 200: Desactivar otra vez: es idempotente
+### 69. ✅ 200: Desactivar otra vez: es idempotente
 POST {{api}}/admin/usuarios/{{registro.response.body.$.id}}/desactivar
 
-### 69. ❌ 400: El admin no puede desactivarse a sí mismo
+### 70. ❌ 400: El admin no puede desactivarse a sí mismo
 POST {{api}}/admin/usuarios/{{adminMe.response.body.$.id}}/desactivar
 
-### 70. ❌ 404: Usuario inexistente
+### 71. ❌ 404: Usuario inexistente
 POST {{api}}/admin/usuarios/99999/activar
 
-### 71. ❌ 400: María desactivada no puede iniciar sesión
+### 72. ❌ 400: María desactivada no puede iniciar sesión
 POST {{api}}/auth/token
 Content-Type: application/x-www-form-urlencoded
 
 username={{registro.response.body.$.username}}&password=Maria1234!
 
-### 72. ✅ 200: Activar a María
+### 73. ✅ 200: Activar a María
 POST {{api}}/admin/usuarios/{{registro.response.body.$.id}}/activar
 
-### 73. ✅ 200: Cerrar sesión: Set-Cookie borra access_token
+### 74. ✅ 200: Cerrar sesión: Set-Cookie borra access_token
 POST {{api}}/auth/logout
 
-### 74. ❌ 401: Sin sesión, /me responde 401
+### 75. ❌ 401: Sin sesión, /me responde 401
 GET {{api}}/auth/me

@@ -138,7 +138,7 @@ backend/
 │   │   └── pedidos/            # la misma cadena: Pedido, DetallePedido y las reglas RN-01 a RN-06
 │   └── db/
 │       └── seed.py             # Datos iniciales, idempotente
-├── food_store.http             # Recorrido de la API con REST Client (74 peticiones)
+├── food_store.http             # Recorrido de la API con REST Client (75 peticiones)
 ├── requirements.txt            # Versiones fijadas
 └── .env.example
 ```
@@ -235,5 +235,5 @@ Cada feature expone lo que usan las demás en su `index.ts` (por ejemplo, `@/fea
 
 ## Verificación
 
-- Backend: `food_store.http` (74 peticiones) da los códigos esperados con PostgreSQL y con SQLite, y confirma el descuento de stock, el rollback del pedido fallido y la restitución al cancelar.
+- Backend: `food_store.http` (75 peticiones) da los códigos esperados con PostgreSQL y con SQLite, y confirma el descuento de stock, el rollback del pedido fallido y la restitución al cancelar.
 - Frontend: `pnpm install`, `pnpm build` y `pnpm lint` sin errores ni avisos. El recorrido completo se probó en el navegador: catálogo, carrito, registro, checkout, cancelación con restitución de stock, panel del admin, vencimiento de sesión y cuenta desactivada.
