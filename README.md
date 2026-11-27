@@ -104,7 +104,7 @@ Los dos proyectos traen un `.env.example`. Los archivos `.env` no se suben al re
 - **Catálogo** (`/`, público): paginado en el servidor (`skip = página × limit`), con búsqueda por nombre, filtro por categoría y «Solo disponibles». Muestra un skeleton mientras carga, un estado vacío y uno de error con «Reintentar».
 - **Carrito** (`/carrito`, público): cantidades, subtotales y total. Se guarda en el navegador y sigue ahí al recargar. La cantidad no puede superar el stock que tenía el producto al agregarlo; el backend vuelve a validar el stock al confirmar.
 - **Checkout** (`/checkout`, con sesión): formulario de TanStack Form con la dirección de entrega (5 a 200 caracteres), la forma de pago (efectivo o transferencia) y notas opcionales. Envía `POST /pedidos`, vacía el carrito y lleva a «Mis pedidos». Si el cliente llega sin sesión, el login (o el registro) lo devuelve al checkout.
-- **Mis pedidos** (`/mis-pedidos`, con sesión): pedidos propios paginados, con filtro por estado, detalle y «Cancelar» solo en `PENDIENTE`.
+- **Mis pedidos** (`/mis-pedidos`, con sesión): pedidos propios paginados, con filtro por estado, el detalle de cada uno (`GET /pedidos/{id}`) y «Cancelar» solo en `PENDIENTE`.
 - **Registro e inicio de sesión** con TanStack Form, con las mismas validaciones que el backend. El registro inicia la sesión.
 
 **Administrador** (`/admin/...`, solo rol `admin`)
@@ -205,7 +205,7 @@ frontend/src/
 │   ├── productos/               # CatalogoPage, AdminProductosPage, ProductoCard, ProductoForm, StockForm, useProductos
 │   ├── usuarios/                # AdminUsuariosPage, useUsuarios
 │   └── pedidos/                 # CarritoPage, CheckoutPage, MisPedidosPage, AdminPedidosPage, AdminResumenPage,
-│                                # usePedidos, useCrearPedido, useCambiarEstadoPedido, useCancelarPedido, useResumenPedidos
+│                                # usePedidos, usePedido, useCrearPedido, useCambiarEstadoPedido, useCancelarPedido, useResumenPedidos
 ├── store/                       # authStore, cartStore y notificationStore (Zustand)
 ├── routes/                      # AppRouter: BrowserRouter y la tabla de rutas
 ├── App.tsx                      # checkSession al montar, AppRouter y Toast
@@ -216,7 +216,7 @@ Cada feature expone lo que usan las demás en su `index.ts` (por ejemplo, `@/fea
 
 ### Estado del servidor y del cliente
 
-- **TanStack Query** maneja todo lo que viene de la API, con `queryKey` descriptivas: `['productos', filtros]`, `['categorias']`, `['pedidos', filtros]`, `['pedidos', 'resumen']` y `['usuarios']`. Las mutaciones invalidan lo que cambian: crear o cancelar un pedido invalida `pedidos` y también `productos`, porque cambió el stock. Ningún componente pide datos con `fetch` dentro de un `useEffect`: el único `useEffect` que llama a la API es `checkSession` al montar la app.
+- **TanStack Query** maneja todo lo que viene de la API, con `queryKey` descriptivas: `['productos', filtros]`, `['categorias']`, `['pedidos', filtros]`, `['pedidos', 'detalle', id]`, `['pedidos', 'resumen']` y `['usuarios']`. Las mutaciones invalidan lo que cambian: crear o cancelar un pedido invalida `pedidos` (listados, detalle y resumen) y también `productos`, porque cambió el stock. El modal de detalle muestra la fila del listado mientras llega `GET /pedidos/{id}`. Ningún componente pide datos con `fetch` dentro de un `useEffect`: el único `useEffect` que llama a la API es `checkSession` al montar la app.
 - **`authStore`** (Zustand con `persist` en `sessionStorage`): `usuario` (el `UserPublic` del backend: nombre, email y rol), `cargando`, `login`, `logout` y `checkSession`. `partialize` guarda solo `usuario`. El token nunca pasa por JavaScript.
 - **`cartStore`** (Zustand con `persist` en `localStorage`): `items` (`producto_id`, `nombre`, `precio_unitario` y `cantidad`, más la imagen y el stock para mostrar la línea y limitar la cantidad), `agregar`, `quitar`, `cambiarCantidad`, `vaciar` y `total`.
 

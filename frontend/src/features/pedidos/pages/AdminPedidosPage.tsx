@@ -3,13 +3,14 @@ import { useSearchParams } from "react-router-dom";
 import type { PaginationState } from "@tanstack/react-table";
 import { handleApiError } from "@/shared/api/handleApiError";
 import { EstadoError } from "@/shared/components/EstadoError";
-import { SkeletonTabla } from "@/shared/components/Skeleton";
+import { Skeleton, SkeletonTabla } from "@/shared/components/Skeleton";
 import { Button } from "@/shared/ui/Button";
 import { Modal } from "@/shared/ui/Modal";
 import { AccionesPedido } from "../components/AccionesPedido";
 import { PedidoDetalle } from "../components/PedidoDetalle";
 import { TablaPedidos } from "../components/TablaPedidos";
 import { useCambiarEstadoPedido } from "../hooks/useCambiarEstadoPedido";
+import { usePedido } from "../hooks/usePedido";
 import { usePedidos } from "../hooks/usePedidos";
 import { ESTADOS, ETIQUETA_ESTADO } from "../types/estados";
 import type { EstadoPedido, Pedido } from "../types/pedido.types";
@@ -35,7 +36,10 @@ export function AdminPedidosPage() {
   const { mutate: cambiar } = cambiarEstado;
   const enCurso = cambiarEstado.isPending ? cambiarEstado.variables?.id : undefined;
 
-  const detalle = data?.items.find((pedido) => pedido.id === detalleId) ?? null;
+  const detalle = usePedido(
+    detalleId,
+    data?.items.find((pedido) => pedido.id === detalleId)
+  );
 
   const handleCambiar = useCallback(
     (pedido: Pedido, nuevo: EstadoPedido) => {
@@ -100,17 +104,20 @@ export function AdminPedidosPage() {
         />
       )}
 
-      <Modal
-        isOpen={detalle !== null}
-        titulo={detalle ? `Pedido #${detalle.id}` : "Pedido"}
-        onClose={() => setDetalleId(null)}
-        ancho="lg"
-      >
-        {detalle && (
+      <Modal isOpen={detalleId !== null} titulo={`Pedido #${detalleId}`} onClose={() => setDetalleId(null)} ancho="lg">
+        {detalle.isPending ? (
+          <Skeleton className="h-64" />
+        ) : detalle.error ? (
+          <EstadoError titulo="No se pudo cargar el pedido" mensaje={handleApiError(detalle.error)} />
+        ) : (
           <>
-            <PedidoDetalle pedido={detalle} mostrarCliente />
+            <PedidoDetalle pedido={detalle.data} mostrarCliente />
             <div className="flex justify-end">
-              <AccionesPedido pedido={detalle} onCambiar={handleCambiar} deshabilitado={enCurso === detalle.id} />
+              <AccionesPedido
+                pedido={detalle.data}
+                onCambiar={handleCambiar}
+                deshabilitado={enCurso === detalle.data.id}
+              />
             </div>
           </>
         )}

@@ -19,6 +19,12 @@ export async function getPedidos(filtros: FiltrosPedidos): Promise<PedidosPagina
   return data;
 }
 
+// Detalle con sus lineas: 403 si es de otro usuario y no es admin
+export async function getPedido(id: number): Promise<Pedido> {
+  const { data } = await api.get<Pedido>(`/pedidos/${id}`);
+  return data;
+}
+
 export async function getResumen(): Promise<ResumenPedidos> {
   const { data } = await api.get<ResumenPedidos>("/pedidos/resumen");
   return data;

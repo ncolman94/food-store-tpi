@@ -11,6 +11,7 @@ import { Button } from "@/shared/ui/Button";
 import { Modal } from "@/shared/ui/Modal";
 import { PedidoDetalle } from "../components/PedidoDetalle";
 import { useCancelarPedido } from "../hooks/useCancelarPedido";
+import { usePedido } from "../hooks/usePedido";
 import { usePedidos } from "../hooks/usePedidos";
 import { ESTADOS, ETIQUETA_ESTADO } from "../types/estados";
 import type { EstadoPedido, Pedido } from "../types/pedido.types";
@@ -30,8 +31,10 @@ export function MisPedidosPage() {
   });
   const cancelar = useCancelarPedido();
 
-  // El detalle sale de la pagina en cache, asi se actualiza solo despues de cancelar
-  const detalle = data?.items.find((pedido) => pedido.id === detalleId) ?? null;
+  const detalle = usePedido(
+    detalleId,
+    data?.items.find((pedido) => pedido.id === detalleId)
+  );
 
   const handleCancelar = (pedido: Pedido) => {
     if (window.confirm(`¿Cancelar el pedido #${pedido.id}? Los productos vuelven al stock.`)) {
@@ -139,18 +142,17 @@ export function MisPedidosPage() {
         </div>
       )}
 
-      <Modal
-        isOpen={detalle !== null}
-        titulo={detalle ? `Pedido #${detalle.id}` : "Pedido"}
-        onClose={() => setDetalleId(null)}
-        ancho="lg"
-      >
-        {detalle && (
+      <Modal isOpen={detalleId !== null} titulo={`Pedido #${detalleId}`} onClose={() => setDetalleId(null)} ancho="lg">
+        {detalle.isPending ? (
+          <Skeleton className="h-64" />
+        ) : detalle.error ? (
+          <EstadoError titulo="No se pudo cargar el pedido" mensaje={handleApiError(detalle.error)} />
+        ) : (
           <>
-            <PedidoDetalle pedido={detalle} />
-            {detalle.estado === "PENDIENTE" && (
+            <PedidoDetalle pedido={detalle.data} />
+            {detalle.data.estado === "PENDIENTE" && (
               <div className="flex justify-end">
-                <Button variant="danger" disabled={cancelar.isPending} onClick={() => handleCancelar(detalle)}>
+                <Button variant="danger" disabled={cancelar.isPending} onClick={() => handleCancelar(detalle.data)}>
                   Cancelar pedido
                 </Button>
               </div>
